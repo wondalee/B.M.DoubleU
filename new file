@@ -1,0 +1,177 @@
+#Wonda Lee
+#LogAnalysis In-Class Assignment
+#Part 1 -3
+
+
+#Extract: 
+#Requester: The IP address or domain 64.242.88.10
+#c-24-11-14-147.client.comcast.net
+#Requested Resource Path : The URL path to the resource
+# /twiki/bin/view/Main/WebHome
+#/razor.html
+
+#write your regular expression:  
+#option 1 pattern: (reference source: https://regex-generator.com))
+# ^[0-9]+\.[0-9]+\.\d\d\.\d\d\s+-\s+-\s+\[(0?[1-9]|[12][0-9]|3[01])/[A-Za-z][A-Za-z][A-Za-z]/([0-9]+(:[0-9]+)+)\s-\d\d\d\d\]\s"GET\s/([A-Za-z]+(/[A-Za-z]+)+).*HTTP/[0-9]+\.\d"\s[0-9]+\s([+-]?(?=\.\d|\d)(?:\d+)?(?:\.?\d*))(?:[Ee]([+-]?\d+))?$
+
+#option 2 pattern: (reference source: https://regex101.com/)
+#^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\s-\s-\s\[[[0-9]{2}/[A-Za-z]{3}/[0-9]{4}:[0-9]{2}:[0-9]{2}:[0-9]{2} -[0-9]{4}\]\s\"GET (\S+)\sHTTP/[0-9]\.[0-9]\"\s\d+ \d+"gm
+#
+#^([A-Zaa-z0-9-\.]+) - - \[[0-9]{2}/[A-Za-z]{3}/[0-9]{4}:[0-9]{2}:[0-9]{2}:[0-9]{2} -[0-9]{4}\] \"POST (\S+) HTTP/[0-9]\.[0-9]\" \d+ \d+
+
+#filepath = "access_log"
+
+#pattern = re.compile(r'^(\S+) - - \[.*?\] "(?:GET|POST) (\S+) HTTP') 
+
+#pattern = re.compile"^([0-9]{1,4}\.[0-9]{1,4}\.\d\d\.\d\d)\s+-\s+-\s+\[(0?[1-9]|[12][0-9]|3[01])/[a-zA-Z]{3}/[0-9]{4}\:[0-9]{2}\:[0-9]{2}\:[0-9]{2}\s-[0-9]{4}]\s\"GET\s/twiki/[a-zA-Z]+/[a-zA-Z]+/[a-zA-Z]+/[a-zA-Z]+\sHTTP/[0-9]\.[0-9]\"\s[0-9]+\s[0-9]+
+#
+#(([a-zA-Z]-[0-9]+-[0-9]+-[0-9]+-[0-9]+)\.([a-zA-Z]+)\.([a-zA-Z]+)\.[a-zA-Z]{3})\s-\s-\s\[[0-9]{2}/[a-zA-Z]{3}/[0-9]{4}\:[0-9]{2}:[0-9]{2}\:[0-9]{2}\s\-[0-9]{4}\]\s\"POST\s/[a-zA-Z0-9_]+\.[a-zA-Z)
+#file = open(filepath, 'r')
+
+#sample log entries:
+# 64.242.88.10 - - [07/Mar/2004:16:05:49 -0800] "GET /twiki/bin/view/Main/WebHome HTTP/1.1" 200 10419
+#c-24-11-14-147.client.comcast.net - - [08/Mar/2004:16:54:47 -0800] "POST /razor.html HTTP/1.1" 200 2869
+
+
+
+import re   #import regex module
+
+# Regex pattern to capture requester and resource path
+pattern = re.compile(r'^(\S+) - - \[.*?\]"(?:GET|POST) (\S+) HTTP') #regex pattern from lecture with timestamp 
+
+#Part 2- Global  
+resource_counts = {}        
+requester_counts = {}      
+requester_resources = {}   
+
+# Sample log entries for testing
+'''logs = [
+    '64.242.88.10 - - [07/Mar/2004:16:05:49 -0800] "GET /twiki/bin/view/Main/WebHome HTTP/1.1" 200 10419',
+    'c-24-11-14-147.client.comcast.net - - [08/Mar/2004:16:54:47 -0800] "POST /razor.html HTTP/1.1" 200 2869'
+]'''
+
+# use to parse each line in file
+def parse_log_file(access_log): #openfile by eafch line
+    # Keep regex on ONE line, properly quoted
+    pattern = re.compile(r'^(\S+) - - \[.*?\]"(?:GET|POST) (\S+) HTTP')
+
+    with open(access_log, 'r') as file:
+        for line in file:
+            match = pattern.search(line)
+            if match:
+                requester, resource = match.groups()
+            
+
+                #source counts
+                resource_counts[resource] = resource_counts.get(resource, 0) + 1
+
+                #req counts
+                requester_counts[requester] = requester_counts.get(requester, 0) + 1
+
+                #req resources
+                if requester not in requester_resources:
+                    requester_resources[requester] = {}
+                requester_resources[requester][resource] = requester_resources[requester].get(resource, 0) + 1
+
+def most_accessed_resource():
+    """Return the resource path accessed the most and its count."""
+    if not resource_counts:
+        return None, 0
+    resource, count = max(resource_counts.items(), key=lambda x: x[1])
+    return resource, count
+
+
+def top_requester():
+    """Return the requester who made the most requests and their count."""
+    if not requester_counts:
+        return None, 0
+    requester, count = max(requester_counts.items(), key=lambda x: x[1])
+    return requester, count
+
+
+def most_requested_resource_by_top_requester():
+    """Return the most requested resource by the top requester and its count."""
+    requester, _ = top_requester()
+    if requester is None:
+        return None, 0
+    resources = requester_resources.get(requester, {})
+    if not resources:
+        return None, 0
+    resource, count = max(resources.items(), key=lambda x: x[1])
+    return resource, count
+
+
+def summary_report():
+
+    resource, resource_count = most_accessed_resource()
+    requester, requester_count = top_requester()
+    top_resource, top_resource_count = most_requested_resource_by_top_requester()
+
+
+    if resource:
+        print(f"Most accessed resource: {resource} ({resource_count} times)")
+    if requester:
+        print(f"Top requester: {requester} ({requester_count} requests)")
+    if top_resource:
+        print(f"Top requester's most accessed resource: {top_resource} ({top_resource_count} times)")
+
+
+
+if __name__ == "__main__":  #SSAMLE log entries wihtout file reading for testing
+   
+    logs = [
+        '64.242.88.10 - - [07/Mar/2004:16:05:49 -0800] "GET /twiki/bin/view/Main/WebHome HTTP/1.1" 200 10419',
+        'c-24-11-14-147.client.comcast.net - - [08/Mar/2004:16:54:47 -0800] "POST /razor.html HTTP/1.1" 200 2869',
+        '64.242.88.10 - - [07/Mar/2004:16:06:49 -0800] "GET /twiki/bin/view/Main/WebHome HTTP/1.1" 200 10419'
+    ]
+
+    # Simulate parsing logs (instead of reading from file)
+    for log in logs:  #loops thru sample logs and updates dictionary 
+        match = pattern.search(log)
+        if match:
+            requester, resource = match.groups()
+            resource_counts[resource] = resource_counts.get(resource, 0) + 1
+            requester_counts[requester] = requester_counts.get(requester, 0) + 1
+            requester_resources.setdefault(requester, {})
+            requester_resources[requester][resource] = requester_resources[requester].get(resource, 0) + 1
+
+    # Generate summary report
+    summary_report()  #calls summary function   
+
+    '''extract data with regex, update dictionary, analyze data count and print summary.'''
+
+
+
+'''
+
+def parse_log_file(filename):
+    with open(filename, 'r') as file:
+        for line in file:
+            match = pattern.search(line)
+            if match:
+                requester, resource = match.groups()
+
+                # source counts
+                if resource not in resource_counts:
+                    resource_counts[resource] = 0
+                resource_counts[resource] += 1
+
+                #req counts
+                if requester not in requester_counts:
+                    requester_counts[requester] = 0
+                requester_counts[requester] += 1
+
+                #req resource  
+                if requester not in requester_resources:
+                    requester_resources[requester] = {}
+                if resource not in requester_resources[requester]:
+                    requester_resources[requester][resource] = 0
+                requester_resources[requester][resource] += 1
+
+                # Test the regex on sample logs
+for log in logs:
+    match = pattern.search(log)
+    if match:
+        requester, resource = match.groups()
+        print(f"Requester: {requester}, Resource: {resource}")
+'''
